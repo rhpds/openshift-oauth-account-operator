@@ -11,8 +11,28 @@ class OAuthAccount(KopfObject):
     plural = 'oauthaccounts'
 
     @property
+    def email(self) -> str:
+        return self.spec.get('email', f"{self.username}@example.com")
+
+    @property
+    def first_name(self) -> str:
+        return self.spec.get('firstName', self.username)
+
+    @property
+    def keycloak_realm(self) -> str:
+        return self.spec.get('keycloak_realm', 'sso')
+
+    @property
+    def last_name(self) -> str:
+        return self.spec.get('lastName', 'Keycloak')
+
+    @property
     def password(self) -> str:
         return b64decode(self.spec['password']).decode('utf-8')
+
+    @property
+    def username(self) -> str:
+        return self.spec.get('username', self.name)
 
     async def handle_create(self, logger) -> None:
         await self.__set_password(logger)
@@ -28,7 +48,7 @@ class OAuthAccount(KopfObject):
 
     async def __remove_password(self, logger) -> None:
         oauth_provider = await OAuthProvider.get()
-        changed = await oauth_provider.remove_account(self.name)
+        changed = await oauth_provider.remove_account(self)
         if changed:
             logger.info("Removed account for %s", self)
 
@@ -36,10 +56,7 @@ class OAuthAccount(KopfObject):
         oauth_provider = await OAuthProvider.get()
         synced = False
         try:
-            changed = await oauth_provider.set_password(
-                name=self.name,
-                password=self.password,
-            )
+            changed = await oauth_provider.set_password(self)
             if changed:
                 logger.info("Set password for %s", self)
             synced = True

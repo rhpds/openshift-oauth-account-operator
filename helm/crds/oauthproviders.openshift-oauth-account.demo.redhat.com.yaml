@@ -47,9 +47,28 @@ spec:
                         type: string
                       namespace:
                         type: string
+                    required:
+                    - name
+                required:
+                - htpasswdSecret
               keycloak:
                 type: object
-                # FIXME
+                properties:
+                  adminSecret:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                  baseUrl:
+                    type: string
+                required:
+                - adminSecret
+                - baseUrl
               type:
                 description: OAuth provider type
                 type: string

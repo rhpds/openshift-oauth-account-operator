@@ -45,7 +45,10 @@ metadata:
 spec:
   type: Keycloak
   keycloak:
-    FIXME!
+    adminSecret:
+      name: keycloak-initial-admin
+      namespace: keycloak
+    baseUrl: https://sso.apps.example.com
 ----
 
 ## Usage

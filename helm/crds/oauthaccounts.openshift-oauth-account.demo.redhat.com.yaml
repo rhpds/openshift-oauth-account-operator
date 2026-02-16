@@ -41,10 +41,28 @@ spec:
           spec:
             description: Specification of OAuthAccount
             type: object
+            required:
+            - password
             properties:
+              email:
+                type: string
+              firstName:
+                type: string
+              groups:
+                type: array
+                items:
+                  type: string
+              keycloak_realm:
+                type: string
+              lastName:
+                type: string
               password:
-                description:
+                description: >-
                   Base64 encoded password.
+                type: string
+              username:
+                description: >-
+                  Username if different from object name.
                 type: string
           status:
             description: Status of OAuthAccount

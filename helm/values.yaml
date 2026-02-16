@@ -12,10 +12,13 @@ namespace:
 #    htpasswdSecret:
 #      name: htpasswd
 
-#config:
-#  type: Keycloak
-#  keycloak:
-#    ... TBD ...
+config:
+  type: Keycloak
+  keycloak:
+    adminSecret:
+      name: keycloak-initial-admin
+      namespace: keycloak
+    baseUrl: https://sso.apps.cluster-ct9gr.dynamic.redhatworkshops.io
 
 deploy: true
 
