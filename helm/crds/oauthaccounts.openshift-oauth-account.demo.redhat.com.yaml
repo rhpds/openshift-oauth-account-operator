@@ -1,0 +1,72 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: oauthaccounts.openshift-oauth-account.demo.redhat.com
+spec:
+  conversion:
+    strategy: None
+  group: openshift-oauth-account.demo.redhat.com
+  names:
+    kind: OAuthAccount
+    listKind: AuthAccountList
+    plural: oauthaccounts
+    singular: oauthaccount
+  scope: Cluster
+  versions:
+  - name: v1
+    additionalPrinterColumns:
+    - name: Synced
+      type: boolean
+      jsonPath: .status.synced
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+    schema:
+      openAPIV3Schema:
+        description: >-
+          Configure account to be created in cluster OAuth provider.
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            properties:
+              name:
+                maxLength: 63
+                pattern: ^[a-z0-9A-Z]([a-z0-9A-Z\-._]*[a-z0-9A-Z])?$
+                type: string
+            type: object
+          spec:
+            description: Specification of OAuthAccount
+            type: object
+            properties:
+              password:
+                description:
+                  Base64 encoded password.
+                type: string
+          status:
+            description: Status of OAuthAccount
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+            properties:
+              diffBase:
+                description: Kopf diffbase
+                type: string
+              kopf:
+                description: Kopf status storage
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              synced:
+                type: boolean
+        required:
+        - apiVersion
+        - kind
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -1,0 +1,29 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "openShiftOAuthAccountOperator.name" . }}
+  labels:
+    {{- include "openShiftOAuthAccountOperator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - openshift-oauth-account.demo.redhat.com
+  resources:
+  - oauthaccounts
+  - oauthproviders
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - openshift-oauth-account.demo.redhat.com
+  resources:
+  - oauthaccounts/status
+  - oauthproviders/status
+  verbs:
+  - create
+  - delete
+  - patch
+  - update

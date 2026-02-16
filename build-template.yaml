@@ -1,0 +1,43 @@
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  annotations:
+    description: |
+      Build template for openshift-oauth-account-operator
+  name: openshift-oauth-account-operator
+
+parameters:
+- name: NAME
+  value: openshift-oauth-account-operator
+
+objects:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    name: ${NAME}
+  spec:
+    lookupPolicy:
+      local: false
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    name: ${NAME}
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${NAME}:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: ${GIT_REPO}
+        ref: master
+    strategy:
+      type: Docker
+      dockerStrategy:
+        dockerfilePath: Containerfile
+    triggers: []

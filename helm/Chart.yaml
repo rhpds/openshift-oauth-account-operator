@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openshift-oauth-account-operator
+description: Operator for accounts in OpenShift OAuth
+type: application
+version: 0.1.0
+appVersion: 0.1.0

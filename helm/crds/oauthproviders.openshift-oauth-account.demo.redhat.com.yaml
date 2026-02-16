@@ -1,0 +1,66 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: oauthproviders.openshift-oauth-account.demo.redhat.com
+spec:
+  conversion:
+    strategy: None
+  group: openshift-oauth-account.demo.redhat.com
+  names:
+    kind: OAuthProvider
+    listKind: AuthProviderList
+    plural: oauthproviders
+    singular: oauthprovider
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: >-
+          Configuration for openshift-oauth-account-operator
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            properties:
+              name:
+                maxLength: 63
+                pattern: ^[a-z0-9A-Z]([a-z0-9A-Z\-._]*[a-z0-9A-Z])?$
+                type: string
+            type: object
+          spec:
+            description: Specification of OAuthAccount
+            type: object
+            required:
+            - type
+            properties:
+              htpasswd:
+                type: object
+                properties:
+                  htpasswdSecret:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+              keycloak:
+                type: object
+                # FIXME
+              type:
+                description: OAuth provider type
+                type: string
+                enum:
+                - HTPasswd
+                - Keycloak
+        required:
+        - apiVersion
+        - kind
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true

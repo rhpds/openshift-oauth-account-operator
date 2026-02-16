@@ -1,0 +1,93 @@
+# RHDP OpenShift OAuth Account Operator
+
+This operator facilitates creating accounts in the cluster OAuth provider so that demo workloads can simply create OAuthAccount objects and not need to know the details of how the cluster OAuth is configured.
+
+Supported OAuth providers:
+
+- HTPasswd
+- Keycloak (OpenID with local keycloak backend)
+
+NOTE: Keycloak support is a lie right now... but should be coming soon!
+
+## Installation
+
+Install with local helm chart
+
+----
+helm template helm/ --include-crds | oc apply -f -
+----
+
+## Configuration
+
+The openshift-oauth-account-operator is configured with a OAuthProvider resource.
+
+### HTPasswd
+
+----
+apiVersion: openshift-oauth-account.demo.redhat.com/v1
+kind: OAuthProvider
+metadata:
+  name: cluster
+spec:
+  type: HTPasswd
+  htpasswd:
+    htpasswdSecret:
+      name: htpasswd
+----
+
+### Keycloak
+
+----
+apiVersion: openshift-oauth-account.demo.redhat.com/v1
+kind: OAuthProvider
+metadata:
+  name: cluster
+spec:
+  type: Keycloak
+  keycloak:
+    FIXME!
+----
+
+## Usage
+
+Users are managed with OAuthAccount objects.
+
+Ex, a user "alice" with password "password".
+
+----
+apiVersion: openshift-oauth-account.demo.redhat.com/v1
+kind: OAuthAccount
+metadata:
+  name: alice
+spec:
+  password: cGFzc3dvcmQ=
+----
+
+Once the account is successfully created in the backed provider the resource status will be updated to `status.synced: true`.
+
+----
+$ oc get oauthaccount alice
+NAME   SYNCED   AGE
+alice  true     10m
+----
+
+## Development
+
+To run locally, just authenticate to your cluster with `oc login` and then:
+
+----
+./run-local.sh
+----
+
+To build and run in your cluster:
+
+----
+oc create namespace openshift-oauth-account-operator
+oc project openshift-oauth-account-operator
+oc process -f build-template.yaml | oc apply -f -
+oc start-build openshift-oauth-account-operator --from-dir=. --follow --wait
+helm template helm \
+--include-crds \
+--set=image.override=$(oc get imagestream openshift-oauth-account-operator -o jsonpath='{.status.tags[?(@.tag=="latest")].items[0].dockerImageReference}') \
+| oc apply -f -
+----

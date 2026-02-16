@@ -1,0 +1,60 @@
+{{- if .Values.deploy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openShiftOAuthAccountOperator.name" . }}
+  namespace: {{ include "openShiftOAuthAccountOperator.namespaceName" . }}
+  labels:
+    {{- include "openShiftOAuthAccountOperator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "openShiftOAuthAccountOperator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "openShiftOAuthAccountOperator.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: operator
+        image: "{{ include "openShiftOAuthAccountOperator.image" . }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        livenessProbe:
+          failureThreshold: 5
+          initialDelaySeconds: 30
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 10
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- with .Values.containerSecurityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "openShiftOAuthAccountOperator.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end -}}
