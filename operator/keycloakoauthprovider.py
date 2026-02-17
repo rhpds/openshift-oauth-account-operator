@@ -37,6 +37,7 @@ class KeycloakOAuthProvider(OAuthProvider):
                         raise TemporaryError(f"Keycloak admin login failed: {resp.status}")
                     data = await resp.json()
                     self.access_token = data['access_token']
+                    self.base_url = base_url
                     self.expires_in = data['expires_in']
                     self.start_time = time()
 
@@ -64,7 +65,12 @@ class KeycloakOAuthProvider(OAuthProvider):
     def base_url(self) -> str:
         return self.spec['keycloak']['baseUrl']
 
-    async def __create_user(self, account) -> bool:
+    @property
+    def default_keycloak_realm(self) -> str:
+        return self.spec['keycloak'].get('defaultRealm', 'sso')
+
+    async def __create_user(self, account) -> None:
+        keycloak_realm = account.keycloak_realm or self.default_keycloak_realm
         async with aiohttp.ClientSession() as client:
             async with client.post(
                 headers={
@@ -78,21 +84,27 @@ class KeycloakOAuthProvider(OAuthProvider):
                     "lastName": account.last_name,
                     "username": account.username,
                 },
-                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users",
+                url=f"{self.base_url}/admin/realms/{keycloak_realm}/users",
             ) as resp:
                 if resp.status == 201:
+                    await account.merge_patch_status({
+                        "keycloak": {
+                            "realm": keycloak_realm
+                        },
+                        "username": account.username
+                    })
                     return True
                 elif resp.status == 409:
                     return False
                 raise TemporaryError(f"Error creating user {account.username}: {resp.status}")
 
-    async def __delete_user(self, account, userid) -> None:
+    async def __delete_user(self, account) -> None:
         async with aiohttp.ClientSession() as client:
             async with client.delete(
                 headers={
                     "Authorization": f"Bearer {self.session.access_token}",
                 },
-                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users/{userid}",
+                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users/{account.keycloak_id}",
             ) as resp:
                 if resp.status not in {204, 404}:
                     raise TemporaryError(f"Error deleting user {account.username}: {resp.status}")
@@ -106,26 +118,21 @@ class KeycloakOAuthProvider(OAuthProvider):
         password = b64decode(secret.data.get('password')).decode('utf-8')
         return username, password
 
-    async def __get_user_id(self, account) -> str|None:
+    async def __set_password(self, account) -> bool:
         async with aiohttp.ClientSession() as client:
-            async with client.get(
-                headers={
-                    "Authorization": f"Bearer {self.session.access_token}",
-                },
-                params={
+            async with client.post(
+                url=f"{self.base_url}/realms/{account.keycloak_realm}/protocol/openid-connect/token",
+                data={
+                    "client_id": "admin-cli",
+                    "grant_type": "password",
+                    "password": account.password,
                     "username": account.username,
-                },
-                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users",
+                }
             ) as resp:
-                if resp.status != 200:
-                    raise TemporaryError(f"Error getting user {account.username}: {resp.status}")
-                data = await resp.json()
-                if len(data) == 0:
-                    return None
-                return data[0]['id']
-
-    async def __set_password(self, account, userid) -> None:
-        async with aiohttp.ClientSession() as client:
+                if resp.status == 200:
+                    return False
+                elif resp.status != 401:
+                    raise TemporaryError(f"Keycloak admin login failed: {resp.status}")
             async with client.put(
                 json={
                     "temporary": False,
@@ -135,10 +142,12 @@ class KeycloakOAuthProvider(OAuthProvider):
                 headers={
                     "Authorization": f"Bearer {self.session.access_token}",
                 },
-                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users/{userid}/reset-password",
+                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users/{account.keycloak_id}/reset-password",
             ) as resp:
                 if resp.status != 204:
                     raise TemporaryError(f"Error setting user {account.username} password: {resp.status}")
+
+            return True
 
     async def __prepare_session(self) -> None:
         """Start or restart session as needed."""
@@ -149,19 +158,47 @@ class KeycloakOAuthProvider(OAuthProvider):
             username, password = await self.__get_keycloak_admin_credentials()
             await self.session.start(self.base_url, username, password)
 
+    async def __update_keycloak_status(self, account) -> None:
+        async with aiohttp.ClientSession() as client:
+            async with client.get(
+                headers={
+                    "Authorization": f"Bearer {self.session.access_token}",
+                },
+                params={
+                    "username": account.username,
+                },
+                url=f"{self.base_url}/admin/realms/{account.keycloak_realm}/users",
+            ) as resp:
+                if resp.status == 404:
+                    await account.merge_patch_status({"keycloak": None})
+                    return
+                elif resp.status != 200:
+                    raise TemporaryError(f"Error getting user {account.username}: {resp.status}")
+                data = await resp.json()
+                keycloak_status = {
+                    "createdTimestamp": data[0]['createdTimestamp'],
+                    "email": data[0]['email'],
+                    "firstName": data[0]['firstName'],
+                    "id": data[0]['id'],
+                    "lastName": data[0]['lastName'],
+                    "realm": account.keycloak_realm,
+                }
+                if account.status.get('keycloak') != keycloak_status:
+                    await account.merge_patch_status({"keycloak": keycloak_status})
+
     async def remove_account(self, account) -> bool:
         """Remove account from keycloak.
         Return boolean to indicate if account was removed."""
         await self.__prepare_session()
-        userid = await self.__get_user_id(account)
-        if userid is None:
+        if account.keycloak_id is None:
             return False
-        await self.__delete_user(account, userid)
+        await self.__delete_user(account)
+        return True
 
     async def set_password(self, account) -> bool:
         """Set password for account in keycloak.
         Return boolean to indicate if password changed."""
         await self.__prepare_session()
-        created = await self.__create_user(account)
-        userid = await self.__get_user_id(account)
-        await self.__set_password(account, userid)
+        await self.__create_user(account)
+        await self.__update_keycloak_status(account)
+        return await self.__set_password(account)

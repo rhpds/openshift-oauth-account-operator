@@ -72,12 +72,31 @@ spec:
               diffBase:
                 description: Kopf diffbase
                 type: string
+              keycloak:
+                type: object
+                required:
+                - realm
+                properties:
+                  createdTimestamp:
+                    type: string
+                  email:
+                    type: string
+                  firstName:
+                    type: string
+                  lastName:
+                    type: string
+                  id:
+                    type: string
+                  realm:
+                    type: string
               kopf:
                 description: Kopf status storage
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               synced:
                 type: boolean
+              username:
+                type: string
         required:
         - apiVersion
         - kind

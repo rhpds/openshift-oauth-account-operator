@@ -19,8 +19,12 @@ class OAuthAccount(KopfObject):
         return self.spec.get('firstName', self.username)
 
     @property
-    def keycloak_realm(self) -> str:
-        return self.spec.get('keycloak_realm', 'sso')
+    def keycloak_id(self) -> str|None:
+        return self.status.get('keycloak', {}).get('id')
+
+    @property
+    def keycloak_realm(self) -> str|None:
+        return self.status_keycloak_realm or self.spec.get('keycloak_realm')
 
     @property
     def last_name(self) -> str:
@@ -31,8 +35,16 @@ class OAuthAccount(KopfObject):
         return b64decode(self.spec['password']).decode('utf-8')
 
     @property
+    def status_keycloak_realm(self) -> str|None:
+        return self.status.get('keycloak', {}).get('realm')
+
+    @property
+    def status_username(self) -> str|None:
+        return self.status.get('username')
+
+    @property
     def username(self) -> str:
-        return self.spec.get('username', self.name)
+        return self.status_username or self.spec.get('username', self.name)
 
     async def handle_create(self, logger) -> None:
         await self.__set_password(logger)

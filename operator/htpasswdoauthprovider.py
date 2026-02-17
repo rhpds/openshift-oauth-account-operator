@@ -94,6 +94,7 @@ class HTPasswdOAuthProvider(OAuthProvider):
             namespace=secret.metadata.namespace,
             body=secret,
         )
+        await account.merge_patch_status({"username": account.username})
         return True
 
     async def __get_htpasswd_secret(self):

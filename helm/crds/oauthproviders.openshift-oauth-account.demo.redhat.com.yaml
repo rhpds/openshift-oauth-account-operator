@@ -66,6 +66,8 @@ spec:
                     - namespace
                   baseUrl:
                     type: string
+                  defaultRealm:
+                    type: string
                 required:
                 - adminSecret
                 - baseUrl
