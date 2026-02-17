@@ -7,8 +7,6 @@ Supported OAuth providers:
 - HTPasswd
 - Keycloak (OpenID with local keycloak backend)
 
-NOTE: Keycloak support is a lie right now... but should be coming soon!
-
 ## Installation
 
 Install with local helm chart
